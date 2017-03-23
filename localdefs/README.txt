@@ -1,5 +1,6 @@
 This directory should contain two files, neither of which should be checked into any public
-VCS repository.
+VCS repository. You will need the same files in your application project so that the firmware update file
+can be encoded in a compatible way.
 
 ota_service.txt		should contain one line with the UUID to be used for the service
 					advertised by the bootloader when in DFU mode
