@@ -1,0 +1,8 @@
+ota_service.txt
+ota_key.txt
+build-debug/
+build-release/
+.idea/
+.DS_store
+cmake-build-debug/
+

@@ -1,0 +1,6 @@
+service_changed_char 3
+serialnum 16
+hwrev 18
+fwrev 20
+ota_control 23
+ota_data 26

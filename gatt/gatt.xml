@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<gatt prefix="GATTDB_" out="gatt_db.c" header="gatt_db.h" generic_attribute_service="true">
+
+    <!-- Generic Access Service -->
+    <!-- https://developer.bluetooth.org/gatt/services/Pages/ServiceViewer.aspx?u=org.bluetooth.service.generic_access.xml -->
+    <service uuid="1800">
+
+        <!-- Device Name -->
+        <!-- https://developer.bluetooth.org/gatt/characteristics/Pages/CharacteristicViewer.aspx?u=org.bluetooth.characteristic.gap.device_name.xml -->
+        <characteristic uuid="2a00">
+            <properties read="true" const="true"/>
+            <value>BG_OTA_DFU</value><!-- TODO:: Set value or change type to "user" and add handling for it -->
+        </characteristic>
+
+        <!-- Appearance -->
+        <!-- https://developer.bluetooth.org/gatt/characteristics/Pages/CharacteristicViewer.aspx?u=org.bluetooth.characteristic.gap.appearance.xml -->
+        <characteristic uuid="2a01">
+            <properties read="true" const="true"/>
+            <value type="hex">0000</value><!-- TODO:: Set value or change type to "user" and add handling for it -->
+        </characteristic>
+
+    </service>
+
+    <!-- Device Information Service -->
+    <service uuid="180A">
+        <!-- Manufacturer name string -->
+        <characteristic uuid="2A29">
+            <properties read="true" const="true"/>
+            <value>Your name goes here</value>
+        </characteristic>
+        <!-- Model number string -->
+        <characteristic uuid="2A24">
+            <properties read="true" const="true"/>
+            <value>1</value>
+        </characteristic>
+        <!-- Serial number string -->
+        <characteristic uuid="2A23" id="serialnum">
+            <properties read="true"/>
+            <value length="16" const="true" variable_length="true">sernum</value>
+        </characteristic>
+        <!-- Hardware revision -->
+        <characteristic uuid="2A27" id="hwrev">
+            <properties read="true" const="true"/>
+            <value>1</value>
+        </characteristic>
+        <!-- Firmware revision -->
+        <characteristic uuid="2A27" id="fwrev">
+            <properties read="true" const="true"/>
+            <value>1.0</value>
+        </characteristic>
+    </service>
+
+    <service uuid="95301000-963F-46B1-B801-0B23E8904835">
+        <description>EFR32BG OTA</description>
+        <characteristic uuid="95301001-963F-46B1-B801-0B23E8904835" id="ota_control">
+            <properties write="true"/>
+            <value length="8" type="user"/>
+            <description>OTA CTRL</description>
+        </characteristic>
+        <characteristic uuid="95301002-963F-46B1-B801-0B23E8904835" id="ota_data">
+            <properties write="true" write_no_response="true"/>
+            <value length="20"/>
+            <description>OTA DATA</description>
+        </characteristic>
+    </service>
+
+
+</gatt>
