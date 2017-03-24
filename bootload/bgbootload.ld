@@ -74,6 +74,18 @@ SECTIONS
   } > FLASH
   __exidx_end = .;
 
+  /* here goes the dfu app ATT, vectors */
+  .dfu_text :
+  {
+    . = ALIGN(0x800);
+     __dfu_AAT = .;
+    KEEP(*(.AAT))
+    . = ALIGN(0x80);
+    __dfu_VectorTable = .;
+    KEEP(*(.dfu_vectors))
+	. = ALIGN(4);
+  } >FLASH
+
   .gecko_table :
   {
 	KEEP(*(.gecko_configuration))
@@ -104,6 +116,7 @@ SECTIONS
 
   __etext = .;
 
+
    _stack_start = 0x4000;
   .text_stack_bin _stack_start :
   {
@@ -113,15 +126,6 @@ SECTIONS
     . = ALIGN(0x800);
   }> FLASH
 
-  /* here goes the dfu app ATT, vectors */
-  .dfu_text :
-  {
-    KEEP(*(.AAT))
-    . = ALIGN(0x80);
-    __dfu_VectorTable = .;
-    KEEP(*(.dfu_vectors))
-	. = ALIGN(4);
-  } >FLASH
 
   .text_app_data : AT (__etext)
   {
@@ -198,4 +202,13 @@ SECTIONS
 
   /* Check if FLASH usage exceeds FLASH size */
   /*ASSERT( LENGTH(FLASH) >= (__etext + SIZEOF(.data)), "FLASH memory overflowed !")*/
+
+  /* Patch the stack */
+
+   _patch_addr = 0x63d4;
+  .patch_stack _patch_addr :
+  {
+	KEEP(*(.patch*))
+  }> FLASH
+
 }

@@ -51,7 +51,7 @@
         </characteristic>
     </service>
 
-    <service uuid="95301000-963F-46B1-B801-0B23E8904835">
+    <service uuid=OTA_SERVICE_UUID>
         <description>EFR32BG OTA</description>
         <characteristic uuid="95301001-963F-46B1-B801-0B23E8904835" id="ota_control">
             <properties write="true"/>

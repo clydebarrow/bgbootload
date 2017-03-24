@@ -94,6 +94,12 @@ static uint8_t stack[__STACK_SIZE] __attribute__ ((aligned(8), used, section(".s
 static uint8_t heap[__HEAP_SIZE]   __attribute__ ((aligned(8), used, section(".heap")));
 #endif
 
+extern uint32_t __dfu_AAT;
+const uint32_t * __PatchAddr[] __attribute__ ((section(".patch"))) = {
+        &__dfu_AAT,
+};
+
+
 
 /*----------------------------------------------------------------------------
   Exception / Interrupt Handler

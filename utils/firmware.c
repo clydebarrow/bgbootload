@@ -3,16 +3,24 @@
 #include	<stdarg.h>
 #include	<stdlib.h>
 
+/**
+ * This is the structure of the firmware file. There is a fixed size header followed by one or more block headers,
+ * which point to the data in the rest of the file.
+ * All data in the headers is little endian
+ */
+
+#define	FW_TAG		0x55A322BF		// magic number to identify the file
+
 typedef struct
 {
-	unsigned char	tag[4];
-	unsigned char	product[4];
-	unsigned char	version[4];
-	unsigned char	addr[4];
-	unsigned char	size[4];
+	unsigned char	tag[4];			// magic number goes here
+	unsigned char	major[2];		// major version number
+	unsigned char	minor[2];		// minor version number
+	unsigned char	numblocks[2];		// the number of blocks in the file,
+    unsigned char	service_uuid[16];	// the service uuid of the bootloader
+	unsigned char	init_vector[16];	// the block 0 initialization vector
 }	firmware;
 
-#define	FW_TAG		0x554322BF
 
 unsigned long	base, last;
 unsigned long	lineno, version ,product;

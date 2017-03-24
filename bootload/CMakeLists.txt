@@ -18,12 +18,14 @@ set(GATT_DIR ${CMAKE_SOURCE_DIR}/gatt)
 set(BLE_STACK_DIR ${CMAKE_SOURCE_DIR}/libs/ble.v2.1.1.0)
 set(GATT_SRC ${GATT_DIR}/gatt.bgproj)
 set(GATT_XML ${GATT_DIR}/gatt.xml)
-set(GATT_OUTPUTS ${GATT_DIR}/${GATT_DB}.c ${GATT_DIR}/${GATT_DB}.h)
+set(GATT_I ${GATT_DIR}/gatt.i)
+set(GATT_OUTPUTS ${GATT_DIR}/${GATT_DB}.c ${GATT_DIR}/${GATT_DB}.h )
 set(BGBUILD_CMD "/Users/clyde/dev/tools/ble/v2.1.1.0/protocol/bluetooth_2.1/bin/bgbuild")
 set(EBL_CMD "/Applications/Simplicity Studio.app/Contents/Eclipse/developer/adapter_packs/commander/Commander.app/Contents/MacOS/commander")
 
 file(GLOB_RECURSE USER_SOURCES "src/*.c")
 file(GLOB_RECURSE USER_HEADERS "inc/*.h")
+file(STRINGS localdefs/ota_service.txt OTA_SERVICE)
 
 IF (CMAKE_BUILD_TYPE MATCHES Debug)
     file(GLOB_RECURSE RTT_LIBS "libs/SEGGER_RTT_V612j/RTT/*.c")
@@ -40,11 +42,12 @@ set(STARTUP "src/startup.c")
 
 SET(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}.ld)
 SET(CMAKE_EXE_LINKER_FLAGS "-Wl,-gc-sections -T ${LINKER_SCRIPT} --specs=nosys.specs")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Map=${PROJECT_NAME}.map")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Map=${PROJECT_NAME}.map,--no-check-sections")
 
 add_custom_command(
         OUTPUT ${GATT_OUTPUTS}
         DEPENDS ${GATT_SRC} ${GATT_XML}
+        COMMAND ${CMAKE_C_COMPILER} -E -C -P -C -DOTA_SERVICE_UUID=\\\"${OTA_SERVICE}\\\" - < ${GATT_XML} > ${GATT_I}
         COMMAND ${BGBUILD_CMD} -gn ${GATT_SRC})
 set_source_files_properties(${GATT_OUTPUTS} PROPERTIES GENERATED TRUE)
 

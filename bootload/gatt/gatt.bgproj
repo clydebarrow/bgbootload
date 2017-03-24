@@ -3,6 +3,6 @@
 <project device="bgm111">
 	
 	<!-- GATT service database -->
-	<gatt in="gatt.xml" />
+	<gatt in="gatt.i" />
   
 </project>
