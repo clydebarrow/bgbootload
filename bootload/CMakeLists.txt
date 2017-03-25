@@ -65,7 +65,7 @@ IF (CMAKE_BUILD_TYPE MATCHES Release)
     add_custom_command(TARGET ${PROJECT_NAME}.elf POST_BUILD
         COMMAND ${CMAKE_OBJCOPY} -Osrec -j .text_stack\* $<TARGET_FILE:${PROJECT_NAME}.elf> file.srec
         COMMAND ${CMAKE_OBJCOPY} -Osrec -j .text_app\* $<TARGET_FILE:${PROJECT_NAME}.elf> file.srec
-        #COMMAND rm file.srec
+        COMMAND rm file.srec
 )
 ENDIF (CMAKE_BUILD_TYPE MATCHES Release)
 
