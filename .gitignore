@@ -8,3 +8,6 @@ cmake-build-debug/
 gatt.i
 gatt_db.c
 platform/
+bootload/CMakeFiles/
+bootload/Makefile
+bootload/cmake_install.cmake

@@ -10,7 +10,7 @@
 /*                                                                  */
 MEMORY
 {
-  FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 0x40000
+  FLASH (rx) : ORIGIN = 0x00021000, LENGTH = 0x40000-0x21000-0x1000
   RAM (rwx)  : ORIGIN = 0x20003000, LENGTH = 0x4C00-4
 }
 
@@ -52,16 +52,16 @@ ENTRY(Reset_Handler)
 
 SECTIONS
 {
-/*  At zero; start with the vector table for the bootloader main. */
-  .boot_vectors :
-  {	
+/*  At the base of our available flash; start with the AAT table for the app, followed by the vectors and other code. */
+  .vectors :
+  {
+    KEEP(*(.AAT))
+    . = ALIGN(0x80);
     KEEP(*(.vectors))
     __Vectors_End = .;
     __Vectors_Size = __Vectors_End - __Vectors;
   } > FLASH
 
-/*  The next major section will be at 0x4000 so pack some other
-    in here as well so it's not wasted. */
   .text_app_ARM.extab :
   {
     *(.ARM.extab* .gnu.linkonce.armextab.*)
@@ -73,18 +73,6 @@ SECTIONS
     *(.ARM.exidx* .gnu.linkonce.armexidx.*)
   } > FLASH
   __exidx_end = .;
-
-  /* here goes the dfu app ATT, vectors */
-  .dfu_text :
-  {
-    . = ALIGN(0x800);
-     __dfu_AAT = .;
-    KEEP(*(.AAT))
-    . = ALIGN(0x80);
-    __dfu_VectorTable = .;
-    KEEP(*(.dfu_vectors))
-	. = ALIGN(4);
-  } >FLASH
 
   .gecko_table :
   {
@@ -115,17 +103,6 @@ SECTIONS
   } > FLASH
 
   __etext = .;
-
-
-   _stack_start = 0x4000;
-  .text_stack_bin _stack_start :
-  {
-    __stack_AAT = .;
-	KEEP(*(.binstack*))
-    __end__ = .;
-    . = ALIGN(0x800);
-    __UserStart = .;
-  }> FLASH
 
 
   .text_app_data : AT (__etext)

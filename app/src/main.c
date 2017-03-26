@@ -4,23 +4,23 @@
 #include <SEGGER_RTT.h>
 #include <native_gecko.h>
 #include "io.h"
-#include "dfu.h"
 #include <em_device.h>
 #include <bg_types.h>
 #include <aat_def.h>
+#include <em_dbg.h>
+#include <core_cm4.h>
 #include "gecko_configuration.h"
 #include "native_gecko.h"
 
 #define MAX_CONNECTIONS 1
-#define AAT_VALUE   ((uint32_t)&__dfu_AAT)          // word value of AAT address
-extern aat_t __UserStart;
-#define USER_AAT    (&__UserStart)
+#define RESET_REQUEST   0x05FA0004      // value to request system reset
 
 uint8_t bluetooth_stack_heap[DEFAULT_BLUETOOTH_HEAP(MAX_CONNECTIONS)];
-extern uint32_t __dfu_AAT;                          // our AAT address
+bool doReboot;
 
 /* Gecko configuration parameters (see gecko_configuration.h) */
 
+#define DFU_TRIGGER "tOoB"
 static const gecko_configuration_t config = {
         .config_flags=0,
         .sleep.flags=0,
@@ -28,8 +28,8 @@ static const gecko_configuration_t config = {
         .bluetooth.heap=bluetooth_stack_heap,
         .bluetooth.heap_size=sizeof(bluetooth_stack_heap),
         .ota.flags=0,
-        .ota.device_name_len=3,
-        .ota.device_name_ptr="OTA",
+        .ota.device_name_len=0,
+        .ota.device_name_ptr="",
         .gattdb=&bg_gattdb_data,
 };
 
@@ -45,18 +45,14 @@ static void user_write(struct gecko_cmd_packet *evt) {
     printf("\n");
     switch (writeStatus->characteristic) {
         uint8 response;
-        case GATTDB_ota_control:
-            response = (uint8) (processCtrlPacket(writeStatus->value.data) ? 0 : 1);
-            gecko_cmd_gatt_server_send_user_write_response(writeStatus->connection, writeStatus->characteristic,
-                                                           response);
+        case GATTDB_ota_trigger:
+            response = 0;
+            if(writeStatus->value.len == 4 && memcmp(writeStatus->value.data, DFU_TRIGGER, 4) == 0) {
+                response = 1;
+                doReboot = true;
+            }
+            gecko_cmd_gatt_server_send_user_write_response(writeStatus->connection, writeStatus->characteristic, response);
             break;
-
-        case GATTDB_ota_data:
-            response = (uint8) (processDataPacket(writeStatus->value.data, writeStatus->value.len) ? 0 : 1);
-            gecko_cmd_gatt_server_send_user_write_response(writeStatus->connection, writeStatus->characteristic,
-                                                           response);
-            break;
-
 
         default:
             gecko_cmd_gatt_server_send_user_write_response(writeStatus->connection, writeStatus->characteristic, 1);
@@ -66,20 +62,11 @@ static void user_write(struct gecko_cmd_packet *evt) {
 
 }
 
-// this is the entry point for the firmware upgrader
-void dfu_main(void) {
-    //EMU_init();
+// this is the entry point for the main program
+void main(void) {
+    //EMU_init();   // stack has done?
     //CMU_init();
-    printf("Started V2\n");
-    if(USER_AAT->type != APP_ADDRESS_TABLE_TYPE)
-        enterDfu = true;
-
-    if(!enterDfu) {
-        SCB->VTOR=(uint32_t)USER_AAT->vectorTable;
-        //Use stack from aat
-        asm("mov sp,%0" :: "r" (USER_AAT->topOfStack));
-        USER_AAT->resetVector();
-    }
+    printf("Started app\n");
     gecko_init(&config);
     printf("Stack initialised\n");
 
@@ -107,6 +94,7 @@ void dfu_main(void) {
         switch (BGLIB_MSG_ID(evt->header)) {
             struct gecko_msg_gatt_server_characteristic_status_evt_t *status;
             struct gecko_msg_gatt_server_user_read_request_evt_t *readStatus;
+            struct gecko_msg_gatt_server_user_write_request_evt_t *write_request;
 
             /* This boot event is generated when the system boots up after reset.
              * Here the system is set to start advertising immediately after boot procedure. */
@@ -130,6 +118,9 @@ void dfu_main(void) {
             case gecko_evt_le_connection_closed_id:
                 printf("Connection closed\n");
                 /* Restart advertising after client has disconnected */
+                if(doReboot) {
+                    SCB->AIRCR = RESET_REQUEST;
+                }
                 gecko_cmd_le_gap_set_mode(le_gap_general_discoverable, le_gap_undirected_connectable);
                 break;
 
@@ -146,6 +137,9 @@ void dfu_main(void) {
                 break;
 
             case gecko_evt_gatt_server_user_write_request_id:
+                write_request = &evt->data.evt_gatt_server_user_write_request;
+                printf("Write request: connection=%X, characteristic=%d, status_flags=%X, offset=%d\n",
+                       write_request->connection, write_request->characteristic, write_request->att_opcode, write_request->offset);
                 user_write(evt);
                 break;
 

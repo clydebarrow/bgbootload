@@ -1,0 +1,6 @@
+service_changed_char 3
+serialnum 16
+hwrev 18
+fwrev 20
+user_char 23
+ota_trigger 26

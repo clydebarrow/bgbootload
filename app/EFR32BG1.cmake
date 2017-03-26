@@ -12,7 +12,7 @@ find_path(GCC_DIR bin/${GCC_PREFIX}-gcc
 
 set(OBJSIZE ${GCC_DIR}/bin/${GCC_PREFIX}-size)
 # specify the cross compiler
-CMAKE_FORCE_C_COMPILER(${GCC_DIR}/bin/-gcc GNU)
+CMAKE_FORCE_C_COMPILER(${GCC_DIR}/bin/${GCC_PREFIX}-gcc GNU)
 CMAKE_FORCE_CXX_COMPILER(${GCC_DIR}/bin/${GCC_PREFIX}-g++ GNU)
 
 # These flags are appropriate for the SiLabs EFR32BG series chips

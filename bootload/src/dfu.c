@@ -26,18 +26,22 @@ bool processCtrlPacket(uint8 *packet) {
     uint32 len = getWord16(packet + DFU_CTRL_PKT_LEN);
     address = getWord32(packet + DFU_CTRL_PKT_ADR);
 
-    printf("Cmd %X, len %d @ %X", cmd, len, address);
+    printf("Cmd %X, len %d @ %X\n", cmd, len, address);
     switch (cmd) {
         case DFU_CMD_RESTART:
             count = 0;
             total = 0;
+            printf("Restarted DFU\n");
             return true;
 
         case DFU_CMD_DATA:
 
-            if (count != 0)
+            if (count != 0) {
+                printf("DATA command before previous complete\n");
                 return false;
+            }
             count = len;
+            printf("DATA command: %d bytes at %X\n", count, address);
             return true;
 
         case DFU_CMD_RESET:
@@ -51,8 +55,8 @@ bool processCtrlPacket(uint8 *packet) {
 
 // process a data packet.
 bool processDataPacket(uint8 *packet, uint8 len) {
-    printf("Data packet len %d\n");
-    if(count > len) {
+    printf("Data packet len %d\n", len);
+    if (count > len) {
         count -= len;
         return true;
     }

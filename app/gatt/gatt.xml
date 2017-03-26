@@ -10,7 +10,7 @@
         <!-- https://developer.bluetooth.org/gatt/characteristics/Pages/CharacteristicViewer.aspx?u=org.bluetooth.characteristic.gap.device_name.xml -->
         <characteristic uuid="2a00">
             <properties read="true" const="true"/>
-            <value>BG_OTA_DFU</value><!-- TODO:: Set value or change type to "user" and add handling for it -->
+            <value>BG_APP</value><!-- TODO:: Set value or change type to "user" and add handling for it -->
         </characteristic>
 
         <!-- Appearance -->
@@ -51,17 +51,17 @@
         </characteristic>
     </service>
 
-    <service uuid=OTA_SERVICE_UUID>
-        <description>EFR32BG OTA</description>
-        <characteristic uuid="95301001-963F-46B1-B801-0B23E8904835" id="ota_control">
-            <properties write="true"/>
-            <value length="8" type="user"/>
-            <description>OTA CTRL</description>
+    <service uuid="fb323bd4-11b3-11e7-a4ff-38c98653bb53">
+        <description>User Service</description>
+        <characteristic uuid="23401001-963F-46B1-B801-0B23E8904835" id="user_char">
+            <properties read="true"/>
+            <value length="8" type="const">Value...</value>
+            <description>User char</description>
         </characteristic>
-        <characteristic uuid="95301002-963F-46B1-B801-0B23E8904835" id="ota_data">
-            <properties write="true" write_no_response="true"/>
-            <value type="user" length="32"/>
-            <description>OTA DATA</description>
+        <characteristic uuid="773c1007-d065-45bd-890b-d960e85e0247" id="ota_trigger">
+            <properties type="user" write="true" write_no_response="true"/>
+            <value type="user" length="4"/>
+            <description>DFU Trigger</description>
         </characteristic>
     </service>
 
