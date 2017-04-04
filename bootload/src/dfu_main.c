@@ -3,21 +3,28 @@
 #include <gatt_db.h>
 #include <SEGGER_RTT.h>
 #include <native_gecko.h>
-#include "io.h"
-#include "dfu.h"
+#include <io.h>
+#include <dfu.h>
 #include <em_device.h>
 #include <bg_types.h>
 #include <aat_def.h>
+#include <em_crypto.h>
 #include "gecko_configuration.h"
 #include "native_gecko.h"
 
-#define MAX_CONNECTIONS 1
+#define MAX_CONNECTIONS        1   // we only talk to one device at a time
+#define MIN_CONN_INTERVAL    6   // 7.5ms
+#define MAX_CONN_INTERVAL    20  // 25ms
+#define LATENCY             40  // max number of connection attempts we can skip. This is set high
+// to allow for AES decryption and flash programming
+#define SUPERV_TIMEOUT      300 // 30s
+
 #define AAT_VALUE   ((uint32_t)&__dfu_AAT)          // word value of AAT address
-extern aat_t __UserStart;
-#define USER_AAT    (&__UserStart)
+#define RESET_REQUEST   0x05FA0004      // value to request system reset
 
 uint8_t bluetooth_stack_heap[DEFAULT_BLUETOOTH_HEAP(MAX_CONNECTIONS)];
 extern uint32_t __dfu_AAT;                          // our AAT address
+unsigned char deKey[KEY_LEN];
 
 /* Gecko configuration parameters (see gecko_configuration.h) */
 
@@ -35,16 +42,18 @@ static const gecko_configuration_t config = {
 
 static void user_write(struct gecko_cmd_packet *evt) {
     struct gecko_msg_gatt_server_user_write_request_evt_t *writeStatus;
-    unsigned i;
+    uint8 response;
 
     writeStatus = &evt->data.evt_gatt_server_user_write_request;
+    /*
+    unsigned i;
     printf("Write value: attr=%d, opcode=%d, offset=%d, value:\n",
            writeStatus->characteristic, writeStatus->att_opcode, writeStatus->offset);
     for (i = 0; i != writeStatus->value.len; i++)
         printf("%02X ", writeStatus->value.data[i]);
     printf("\n");
+        */
     switch (writeStatus->characteristic) {
-        uint8 response;
         case GATTDB_ota_control:
             response = (uint8) (processCtrlPacket(writeStatus->value.data) ? 0 : 1);
             gecko_cmd_gatt_server_send_user_write_response(writeStatus->connection, writeStatus->characteristic,
@@ -70,17 +79,20 @@ static void user_write(struct gecko_cmd_packet *evt) {
 void dfu_main(void) {
     //EMU_init();
     //CMU_init();
+
     printf("Started V2\n");
-    if(USER_AAT->type != APP_ADDRESS_TABLE_TYPE)
+    if (USER_BLAT->type != APP_APP_ADDRESS_TYPE)
         enterDfu = true;
 
-    if(!enterDfu) {
-        SCB->VTOR=(uint32_t)USER_AAT->vectorTable;
+    if (!enterDfu) {
+        SCB->VTOR = (uint32_t) USER_BLAT->vectorTable;
         //Use stack from aat
-        asm("mov sp,%0" :: "r" (USER_AAT->topOfStack));
-        USER_AAT->resetVector();
+        asm("mov sp,%0"::"r" (USER_BLAT->topOfStack));
+        USER_BLAT->resetVector();
     }
+    CRYPTO_AES_DecryptKey256(CRYPTO, deKey, ota_key);
     gecko_init(&config);
+    gecko_cmd_le_gap_set_conn_parameters(MIN_CONN_INTERVAL, MAX_CONN_INTERVAL, LATENCY, SUPERV_TIMEOUT);
     printf("Stack initialised\n");
 
 
@@ -92,7 +104,7 @@ void dfu_main(void) {
         evt = gecko_wait_event();
 
         /* Handle events */
-#if DEBUG
+#if defined(DEBUG) && false
         unsigned id = BGLIB_MSG_ID(evt->header) & ~gecko_dev_type_gecko;
         if (id != (gecko_evt_hardware_soft_timer_id & ~gecko_dev_type_gecko)) {
             if (id & gecko_msg_type_evt) {
@@ -120,7 +132,6 @@ void dfu_main(void) {
 
                 /* Start general advertising and enable connections. */
                 gecko_cmd_le_gap_set_mode(le_gap_general_discoverable, le_gap_undirected_connectable);
-
                 break;
 
             case gecko_evt_le_connection_opened_id:
@@ -129,8 +140,12 @@ void dfu_main(void) {
 
             case gecko_evt_le_connection_closed_id:
                 printf("Connection closed\n");
-                /* Restart advertising after client has disconnected */
-                gecko_cmd_le_gap_set_mode(le_gap_general_discoverable, le_gap_undirected_connectable);
+                if (doReset) {
+                    printf("Resetting....\n");
+                    SCB->AIRCR = RESET_REQUEST;
+                } else
+                    /* Restart advertising after client has disconnected */
+                    gecko_cmd_le_gap_set_mode(le_gap_general_discoverable, le_gap_undirected_connectable);
                 break;
 
             case gecko_evt_gatt_server_characteristic_status_id:

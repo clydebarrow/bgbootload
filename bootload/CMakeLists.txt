@@ -15,12 +15,16 @@ include_directories(platform/CMSIS/Include)
 
 # find the bgbuild command used to translate xml into C
 find_program(BGBUILD_CMD bin/bgbuild
-        $ENV{HOME}/dev/tools/ble/v2.1.1.0/protocol/bluetooth_2.1)
+        /Applications/Simplicity Studio.app/Contents/Eclipse/developer/stacks/ble/v2.1.1.0
+        $ENV{HOME}/dev/tools/ble/v2.1.1.0/protocol/bluetooth_2.1
+        )
 
 set(GATT_DB gatt_db)
 set(GATT_DIR ${CMAKE_SOURCE_DIR}/gatt)
 set(LOCALDIR ${CMAKE_SOURCE_DIR}/localdefs)
 set(OTA_SERVICE_UUID_FILE ${LOCALDIR}/ota_service.txt)
+set(OTA_KEY_FILE ${LOCALDIR}/ota_key.txt)
+set(OTA_KEY_C ota_key.c)
 set(BLE_STACK_DIR ${CMAKE_SOURCE_DIR}/libs/ble.v2.1.1.0)
 set(GATT_SRC ${GATT_DIR}/gatt.bgproj)
 set(GATT_XML ${GATT_DIR}/gatt.xml)
@@ -31,6 +35,7 @@ set(BIN_FILE ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.bin)
 file(GLOB_RECURSE USER_SOURCES "src/*.c")
 file(GLOB_RECURSE USER_HEADERS "inc/*.h")
 file(STRINGS ${OTA_SERVICE_UUID_FILE} OTA_SERVICE)
+file(STRINGS ${OTA_KEY_FILE} OTA_KEY LIMIT_INPUT 64)
 
 IF (CMAKE_BUILD_TYPE MATCHES Debug)
     file(GLOB_RECURSE RTT_LIBS "libs/SEGGER_RTT_V612j/RTT/*.c")
@@ -56,7 +61,16 @@ add_custom_command(
         COMMAND ${BGBUILD_CMD} -gn ${GATT_SRC})
 set_source_files_properties(${GATT_OUTPUTS} PROPERTIES GENERATED TRUE)
 
-add_executable(${PROJECT_NAME}.elf ${USER_SOURCES} ${USER_HEADERS} ${LINKER_SCRIPT} gatt/${GATT_DB}.c ${RTT_LIBS})
+add_custom_command(
+        OUTPUT ${OTA_KEY_C}
+        DEPENDS ${OTA_KEY_FILE}
+        COMMAND echo 'const unsigned char ota_key[] = {' >${OTA_KEY_C}
+        COMMAND head -1 ${OTA_KEY_FILE} | sed 's/[a-z0-9A-Z][A-Za-z0-9]/0x&,/g' >> ${OTA_KEY_C}
+        COMMAND echo "'};'" >>${OTA_KEY_C}
+
+)
+
+add_executable(${PROJECT_NAME}.elf ${USER_SOURCES} ${USER_HEADERS} ${LINKER_SCRIPT} gatt/${GATT_DB}.c ${RTT_LIBS} ${OTA_KEY_C})
 target_link_libraries(${PROJECT_NAME}.elf ${LIBRARIES})
 set_target_properties(${PROJECT_NAME}.elf PROPERTIES LINK_DEPENDS ${LINKER_SCRIPT})
 

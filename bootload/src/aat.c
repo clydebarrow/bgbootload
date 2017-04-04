@@ -22,7 +22,7 @@ __attribute__ ((section (".AAT")))
     .type=APP_ADDRESS_TABLE_TYPE,     //uint16_t type;
     .version=AAT_MAJOR_VERSION,          //uint16_t version;
     .vectorTable=(void*)&__dfu_Vectors,              //const HalVectorTableType *vectorTable;
-    .aatSize=sizeof(AppAddressTable),    
+    .aatSize=sizeof(aat_t),
     .simeeBottom=(void*)0xFFFFFFFF,
     .imageCrc=IMAGE_CRC_MAGIC,
     .timeStamp=IMAGE_TIMESTAMP_MAGIC

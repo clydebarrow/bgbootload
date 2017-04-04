@@ -11,11 +11,10 @@
 
 #include <dfu.h>
 #include <aat_def.h>
-#include <flash.h>
 #include <em_device.h>
-#include <em_msc.h>
 #include <io.h>
 #include <em_rmu.h>
+#include <flash.h>
 
 #define lockBits        ((uint32_t *)LOCKBITS_BASE)
 
@@ -27,7 +26,14 @@
 
 static const uint32_t stack_aat[] = {0x20007BF8, 0x00020A4B, 0x0000CE87, 0x0000F393};
 
+// random bytes
+
+static const uint8_t dfu_key[] = {0xCE, 0x8D, 0xC1, 0x1F, 0x37, 0x7B, 0xB1, 0x9A,
+                            0x79, 0xF5, 0xE1, 0x44, 0x8C, 0xC9, 0xAD, 0x57};
+// copy of random bytes
+static uint8_t dfu_key_copy[sizeof(dfu_key)] __attribute__ ((section (".dfu_key")));
 bool enterDfu;        // set if we should enter dfu mode
+
 
 static void hang() {
     for (;;);
@@ -37,13 +43,13 @@ void main(void) {
 
     EMU_init();
     CMU_init();
-    /* Unlock the MSC */
-    MSC->LOCK = MSC_UNLOCK_CODE;
     /* Enable writing to the flash */
 
-#if DEBUG == 0
+#if !defined(DEBUG)
     // check debug lock
     if(DLW != 0) {
+    /* Unlock the MSC */
+        MSC->LOCK = MSC_UNLOCK_CODE;
         MSC->WRITECTRL |= MSC_WRITECTRL_WREN;
         FLASH_writeWord((uint32_t) &DLW, 0);
         MSC->WRITECTRL &= ~MSC_WRITECTRL_WREN;
@@ -51,11 +57,19 @@ void main(void) {
     }
 #endif
 
+    // ************
+    // for debug purposes, never run the user program
 
+#if defined(DEBUG)
+    enterDfu = true;
+#endif
     uint32_t cause = RMU_ResetCauseGet();
     RMU_ResetCauseClear();
-    if ((cause & (RMU_RSTCAUSE_PORST | RMU_RSTCAUSE_SYSREQRST)) == RMU_RSTCAUSE_SYSREQRST)
+    // enter DFU if we got here from anything other than a power on reset, and our key
+    // has been copied to RAM
+    if (!(cause & RMU_RSTCAUSE_PORST) && memcmp(dfu_key, dfu_key_copy, sizeof(dfu_key)) == 0)
         enterDfu = true;
+    memset(dfu_key_copy, 1, sizeof(dfu_key_copy));
     /* check for valid BT stack loaded */
     if (memcmp(stack_aat, &__stack_AAT, sizeof stack_aat) != 0)
         hang();
@@ -66,4 +80,13 @@ void main(void) {
     //Use stack from aat
     asm("mov sp,%0"::"r" (__stack_AAT.topOfStack));
     __stack_AAT.resetVector();
+}
+
+/**
+ * This function is called from the application program to flag that we should enter DFU mode
+ * after the next non-power on reset. It is accessed through
+ * an entry in the vector table, indexed at ENTER_DFU_VECTOR.
+ */
+void EnterDFU_Handler(void) {
+    memcpy(dfu_key_copy, dfu_key, sizeof(dfu_key_copy));
 }

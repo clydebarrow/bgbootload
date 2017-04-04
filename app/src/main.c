@@ -3,17 +3,18 @@
 #include <gatt_db.h>
 #include <SEGGER_RTT.h>
 #include <native_gecko.h>
-#include "io.h"
+#include <io.h>
 #include <em_device.h>
 #include <bg_types.h>
-#include <aat_def.h>
 #include <em_dbg.h>
-#include <core_cm4.h>
 #include "gecko_configuration.h"
 #include "native_gecko.h"
 
 #define MAX_CONNECTIONS 1
 #define RESET_REQUEST   0x05FA0004      // value to request system reset
+typedef void( Func )(void);
+#define enterDfu    ((Func **)28)
+
 
 uint8_t bluetooth_stack_heap[DEFAULT_BLUETOOTH_HEAP(MAX_CONNECTIONS)];
 bool doReboot;
@@ -50,6 +51,7 @@ static void user_write(struct gecko_cmd_packet *evt) {
             if(writeStatus->value.len == 4 && memcmp(writeStatus->value.data, DFU_TRIGGER, 4) == 0) {
                 response = 1;
                 doReboot = true;
+                (*enterDfu)();
             }
             gecko_cmd_gatt_server_send_user_write_response(writeStatus->connection, writeStatus->characteristic, response);
             break;

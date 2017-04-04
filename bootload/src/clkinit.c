@@ -80,6 +80,8 @@ void CMU_init(void) {
     /* Enable clock for GPIO by default */
     CMU_ClockEnable(cmuClock_GPIO, true);
 
+    /* Enable clock for Crypto by default */
+    CMU_ClockEnable(cmuClock_CRYPTO, true);
     // [Peripheral Clock enables]$
 
 }

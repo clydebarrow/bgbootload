@@ -6,7 +6,9 @@
 #define BGBOOTLOAD_DFU_H
 
 #include <stdbool.h>
-#include "bg_types.h"
+#include <bg_types.h>
+#include <aat_def.h>
+#include <blat.h>
 // definitions for the DFU protocol
 
 // Control packets
@@ -20,11 +22,25 @@
 
 #define DFU_CMD_RESTART     0x1     // reset DFU system - resets data counts etc.
 #define DFU_CMD_DATA        0x2     // data coming on the data channel
-#define DFU_CMD_CRC         0x3     // total count and CRC of data sent
-#define DFU_CMD_RESET       0x4     // reset device
+#define DFU_CMD_IV          0x3     // Initialization vector coming on data channel
+#define DFU_CMD_DONE        0x4     // Download done, send status
+#define DFU_CMD_RESET       0x5     // reset device
+#define DFU_CMD_DIGEST      0x6     // Digest coming
+#define DFU_CMD_PING        0x7     // Check progress
 
+#define IV_LEN              16      // length of initialization vector
+#define KEY_LEN             (256/8) // length of key
+#define DIGEST_LEN          (256/8) // length of SHA256 digest
+
+extern blat_t __UserStart;
+#define USER_BLAT    (&__UserStart)
 extern bool processCtrlPacket(uint8 * packet);      // process a control packet. Return true if accepted
 extern bool processDataPacket(uint8 * packet, uint8 len);    // process a data packet.
 extern bool enterDfu;
+extern bool doReset;
+extern const unsigned char ota_key[KEY_LEN];
+extern unsigned char deKey[KEY_LEN];
+
+#define DFU_ENTRY_VECTOR    7       // index into vector table for EnterDFU_Handler
 
 #endif //BGBOOTLOAD_DFU_H

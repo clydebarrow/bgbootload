@@ -44,9 +44,8 @@ typedef struct aat_s
   uint32_t reserved1[5];          // Reserved for bootloader expansion
 } aat_t;
 
-// this is our copy of the AAT.
+// this is our copy of the stack's AAT.
 
-extern const aat_t AppAddressTable;
 extern const aat_t __stack_AAT;
 
 #endif

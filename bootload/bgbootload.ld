@@ -12,6 +12,7 @@ MEMORY
 {
   FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 0x40000
   RAM (rwx)  : ORIGIN = 0x20003000, LENGTH = 0x4C00-4
+  BLERAM (rwx)  : ORIGIN = 0x20002FF0, LENGTH = 0x10
 }
 
 /* This is the linker script for the bootloader.
@@ -126,6 +127,12 @@ SECTIONS
     . = ALIGN(0x800);
     __UserStart = .;
   }> FLASH
+
+/* This is where the enter-dfu key gets written */
+  .dfu_key :
+  {
+    KEEP(*(.dfu_key))
+  } > BLERAM
 
 
   .text_app_data : AT (__etext)

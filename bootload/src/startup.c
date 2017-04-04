@@ -193,6 +193,10 @@ void RFSENSE_IRQHandler(void) __attribute__ ((weak, alias("Default_Handler")));
 
 void FPUEH_IRQHandler(void) __attribute__ ((weak, alias("Default_Handler")));
 
+/* special hook for the routine that enters DFU mode */
+
+void EnterDFU_Handler(void) __attribute__ ((weak, alias("Default_Handler")));
+
 
 /*----------------------------------------------------------------------------
   Exception / Interrupt Vector table
@@ -206,7 +210,7 @@ const pFunc __Vectors[] __attribute__ ((section(".vectors"))) = {
         MemManage_Handler,                        /*      MPU Fault Handler         */
         BusFault_Handler,                         /*      Bus Fault Handler         */
         UsageFault_Handler,                       /*      Usage Fault Handler       */
-        Default_Handler,                          /*      Reserved                  */
+        EnterDFU_Handler,                         /*      Enters DFU mode           */
         Default_Handler,                          /*      Reserved                  */
         Default_Handler,                          /*      Reserved                  */
         Default_Handler,                          /*      Reserved                  */

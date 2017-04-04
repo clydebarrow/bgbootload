@@ -53,5 +53,7 @@ RAMFUNC void FLASH_eraseOneBlock(uint32_t blockStart);
 void FLASH_init(void);
 void FLASH_CalcPageSize(void);
 
+//#define FLASH_PAGE_SIZE 0x800       // flash page size on EFR32BG
+
 extern uint32_t flashPageSize;
 #endif
