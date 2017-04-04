@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.6)
 project(bgbootload)
 
-set(GCC_PREFIX arm-none-eabi)
-set(CMAKE_CXX_COMPILER ${GCC_PREFIX}/-gcc)
 set(CMAKE_C_STANDARD 99)
 add_definitions(-D__NO_SYSTEM_INIT)
 add_definitions(-DEFR32BG1B232F256GM48)
@@ -17,6 +15,7 @@ include_directories(platform/CMSIS/Include)
 
 # find the bgbuild command used to translate xml into C
 find_program(BGBUILD_CMD bin/bgbuild
+        /Applications/Simplicity Studio.app/Contents/Eclipse/developer/sdks/gecko_sdk_suite/v1.0
         /Applications/Simplicity Studio.app/Contents/Eclipse/developer/stacks/ble/v2.1.1.0
         $ENV{HOME}/dev/tools/ble/v2.1.1.0/protocol/bluetooth_2.1
         )

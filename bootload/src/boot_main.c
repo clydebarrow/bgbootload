@@ -57,10 +57,9 @@ void main(void) {
     }
 #endif
 
-    // ************
     // for debug purposes, never run the user program
 
-#if defined(DEBUG)
+#if defined(DFU_DEBUG)
     enterDfu = true;
 #endif
     uint32_t cause = RMU_ResetCauseGet();
