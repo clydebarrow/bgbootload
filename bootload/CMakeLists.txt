@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.6)
 project(bgbootload)
 
+set(GCC_PREFIX arm-none-eabi)
+set(CMAKE_CXX_COMPILER ${GCC_PREFIX}/-gcc)
 set(CMAKE_C_STANDARD 99)
 add_definitions(-D__NO_SYSTEM_INIT)
 add_definitions(-DEFR32BG1B232F256GM48)
