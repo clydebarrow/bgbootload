@@ -1,10 +1,10 @@
 # bgbootload
 Secure OTA BLE bootloader for SiLabs EFR32BG chips and BGM111 modules
 ## Overview
-This project was created to provide an open-source alternative to the closed source OTA (Over The Air) bootloader provided by Silicon Labs for their Blue Gecko chips and modules. This bootloader has been tested with the BGM111A BLE module, but should work with any of the EFR32BG series chips.
+This project was created to provide an open-source alternative to the closed source OTA (Over The Air) bootloader provided by Silicon Labs for their Blue Gecko chips and modules. This bootloader has been tested with the BGM111A BLE module, but should work with any of the EFR32BG series chips. Since this has been written, Silicon Labs has released v2.3 of the BLE stack, which includes a newer bootloader that does provide encryption. Its merits compared to this project have not been evaluated.
 
 ## Why an open source bootloader?
-The SiLabs BLE stack is closed source - the rationale for this is understandable, but most of the OTA bootloader is built into the stack, and uses a proprietary file format, and is thus quite opaque in its operation. It's not clear what encryption (if any) or end-to-end data validation is used, and there are difficulties in using it with GCC rather than the expensive IAR compiler. An open-source bootloader can be customised to individual requirements, uses a non-proprietary file format, and can use verifiable encryption methods.
+The SiLabs BLE v2.1.1.0 stack is closed source - the rationale for this is understandable, but most of the OTA bootloader is built into the stack, and uses a proprietary file format, and is thus quite opaque in its operation. It's not clear what encryption (if any) or end-to-end data validation is used, and there are difficulties in using it with GCC rather than the expensive IAR compiler. An open-source bootloader can be customised to individual requirements, uses a non-proprietary file format, and can use verifiable encryption methods.
 ## Configuration
 The BLE stack used is V2.1.1.0. The stack is provided by SiLabs as a pre-compiled BLOB (binstack.o) and a symbol file (stack.a.) The stack must be loaded into flash at a fixed address (0x4000) and is used by the bootloader and any applications by making calls using the addresses in stack.a. What this means is that binstack.o and stack.a are linked with the bootloader, but the application program need only link with stack.a, since the stack BLOB is already loaded with the bootloader.
 
