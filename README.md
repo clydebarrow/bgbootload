@@ -54,5 +54,9 @@ starts up its own BLE service. The bootloader service UUID is stored in a firmwa
 to look for. There are two BLE characteristics, one for control and one for data which are used to transfer the application to
 the bootloader. The bootloader decrypts the data using the CRYPTO hardware, and verifies a SHA-256 hash to confirm successful and
 complete programming. If all this is successful it will enable the application program, which will run on the next reset.
+## Using the bootloader client app
+An Android app is included in this repository as an APK. This can be sideloaded onto an Android device that supports BLE to load firmware files into a target device.  To test this out you should build the bootloader as provided here, and flash it to your device with JTAG/SWD. Build the sample app and copy the app.fmw file to your Android device. Then run the OTA DFU app you just sideloaded and using the "Choose Device" button find the advertising target device, called BG_OTA_DFU. Tap on this, then use the "Choose File" button to choose the firmware file (Dropbox can be handy for this.) Then the "Flash Device" button should be enabled, and pressing it will send the firmware file to the target. On successful completion it will reset, and assuming you are using a release build of the bootloader, the application program will start running, advertising itself as BG_APP. The bootloader debug build never runs the application.
+## Re-entering DFU mode
+Once you have your application running, to re-enter DFU mode it needs to do something - the sample app has a characteristic for this purpose, and the OTA DFU Android app recognises this and will show a button "Enter DFU mode" when it detects this characteristic. Tapping the button will cause the application to reboot to DFU mode, then the BG_OTA_DFU device will reappear.
 
 
