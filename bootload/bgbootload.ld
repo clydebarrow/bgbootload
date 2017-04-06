@@ -128,12 +128,6 @@ SECTIONS
     __UserStart = .;
   }> FLASH
 
-/* This is where the enter-dfu key gets written */
-  .dfu_key :
-  {
-    KEEP(*(.dfu_key))
-  } > BLERAM
-
 
   .text_app_data : AT (__etext)
   {
@@ -211,10 +205,16 @@ SECTIONS
   /* Check if FLASH usage exceeds FLASH size */
   /*ASSERT( LENGTH(FLASH) >= (__etext + SIZEOF(.data)), "FLASH memory overflowed !")*/
 
+/* This is where the enter-dfu key gets written */
+  .dfu_key (NOLOAD) :
+  {
+    KEEP(*(.dfu_key))
+  } > BLERAM
+
   /* Patch the stack */
 
    _patch_addr = 0x63d4;
-  .patch_stack _patch_addr :
+  .patch_stack _patch_addr  :
   {
 	KEEP(*(.patch*))
   }> FLASH
