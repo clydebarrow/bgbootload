@@ -12,6 +12,7 @@ include_directories(gatt)
 include_directories(libs/SEGGER_RTT_V612j/RTT)
 include_directories(EFR32BG1B)
 include_directories(em_inc)
+include_directories(core)
 
 # find the bgbuild command used to translate xml into C
 find_program(BGBUILD_CMD bin/bgbuild
