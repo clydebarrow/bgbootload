@@ -10,12 +10,12 @@ add_definitions(-D__FPU_PRESENT)
 include_directories(inc)
 include_directories(gatt)
 include_directories(libs/SEGGER_RTT_V612j/RTT)
-include_directories(platform/emlib/inc)
-include_directories(platform/Device/SiliconLabs/EFR32BG1B/Include)
-include_directories(platform/CMSIS/Include)
+include_directories(EFR32BG1B)
+include_directories(em_inc)
 
 # find the bgbuild command used to translate xml into C
 find_program(BGBUILD_CMD bin/bgbuild
+        /Applications/Simplicity Studio.app/Contents/Eclipse/developer/sdks/gecko_sdk_suite/v1.0
         $ENV{HOME}/dev/tools/ble/v2.1.1.0/protocol/bluetooth_2.1)
 
 # find the bgfirmware utility. Firstly look in the parent directory/utils. Customise this for your project layout
