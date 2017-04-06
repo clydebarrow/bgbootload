@@ -13,11 +13,7 @@
 #include "native_gecko.h"
 
 #define MAX_CONNECTIONS        1   // we only talk to one device at a time
-#define MIN_CONN_INTERVAL    6   // 7.5ms
-#define MAX_CONN_INTERVAL    20  // 25ms
-#define LATENCY             40  // max number of connection attempts we can skip. This is set high
 // to allow for AES decryption and flash programming
-#define SUPERV_TIMEOUT      300 // 30s
 
 #define AAT_VALUE   ((uint32_t)&__dfu_AAT)          // word value of AAT address
 #define RESET_REQUEST   0x05FA0004      // value to request system reset
@@ -25,6 +21,7 @@
 uint8_t bluetooth_stack_heap[DEFAULT_BLUETOOTH_HEAP(MAX_CONNECTIONS)];
 extern uint32_t __dfu_AAT;                          // our AAT address
 unsigned char deKey[KEY_LEN];
+uint8 currentConnection;
 
 /* Gecko configuration parameters (see gecko_configuration.h) */
 
@@ -61,13 +58,13 @@ static void user_write(struct gecko_cmd_packet *evt) {
             break;
 
         case GATTDB_ota_data:
-            response = (uint8) (processDataPacket(writeStatus->value.data, writeStatus->value.len) ? 0 : 1);
-            gecko_cmd_gatt_server_send_user_write_response(writeStatus->connection, writeStatus->characteristic,
-                                                           response);
+            // only respond if the command fails
+            if (!processDataPacket(writeStatus->value.data, writeStatus->value.len))
+                gecko_cmd_gatt_server_send_user_write_response(writeStatus->connection, writeStatus->characteristic, 1);
             break;
 
-
         default:
+            printf("Bad write - handle %d\n", writeStatus->characteristic);
             gecko_cmd_gatt_server_send_user_write_response(writeStatus->connection, writeStatus->characteristic, 1);
             break;
 
@@ -92,28 +89,23 @@ void dfu_main(void) {
     }
     CRYPTO_AES_DecryptKey256(CRYPTO, deKey, ota_key);
     gecko_init(&config);
-    gecko_cmd_le_gap_set_conn_parameters(MIN_CONN_INTERVAL, MAX_CONN_INTERVAL, LATENCY, SUPERV_TIMEOUT);
     printf("Stack initialised\n");
+    gecko_cmd_gatt_set_max_mtu(MAX_MTU);
 
 
     for (;;) {
         /* Event pointer for handling events */
         struct gecko_cmd_packet *evt;
+        struct gecko_msg_le_connection_parameters_evt_t *pp;
+        uint16 i;
 
         /* Check for stack event. */
         evt = gecko_wait_event();
 
         /* Handle events */
-#if defined(DEBUG) && false
         unsigned id = BGLIB_MSG_ID(evt->header) & ~gecko_dev_type_gecko;
+#if defined(DEBUG) && false
         if (id != (gecko_evt_hardware_soft_timer_id & ~gecko_dev_type_gecko)) {
-            if (id & gecko_msg_type_evt) {
-                id &= ~gecko_msg_type_evt;
-                printf("event = %X\n", id);
-            } else if (id & gecko_msg_type_rsp) {
-                id &= ~gecko_msg_type_rsp;
-                printf("response = %X\n", id);
-            }
         }
 #endif
         switch (BGLIB_MSG_ID(evt->header)) {
@@ -123,7 +115,7 @@ void dfu_main(void) {
             /* This boot event is generated when the system boots up after reset.
              * Here the system is set to start advertising immediately after boot procedure. */
             case gecko_evt_system_boot_id:
-                printf("system_boot\n");
+                printf("Bootloader: system_boot\n");
 
                 /* Set advertising parameters. 100ms advertisement interval. All channels used.
              * The first two parameters are minimum and maximum advertising interval, both in
@@ -136,6 +128,8 @@ void dfu_main(void) {
 
             case gecko_evt_le_connection_opened_id:
                 printf("Connection opened\n");
+                gecko_cmd_gatt_set_max_mtu(MAX_MTU);
+                currentConnection = evt->data.evt_le_connection_opened.connection;
                 break;
 
             case gecko_evt_le_connection_closed_id:
@@ -164,7 +158,30 @@ void dfu_main(void) {
                 user_write(evt);
                 break;
 
+            case gecko_evt_le_connection_parameters_id:
+                pp = &evt->data.evt_le_connection_parameters;
+                printf("Connection parameters: interval %d, latency %d, timeout %d\n",
+                       pp->interval, pp->latency, pp->timeout);
+                break;
+
+            case gecko_evt_gatt_mtu_exchanged_id:
+                printf("MTU exchanged: %d\n", evt->data.evt_gatt_mtu_exchanged.mtu);
+                break;
+
+            case gecko_evt_endpoint_status_id:
+                //printf("Endpoint %d status: flags %X, type %d\n",
+                       //evt->data.evt_endpoint_status.endpoint, evt->data.evt_endpoint_status.flags, evt->data.evt_endpoint_status.type);
+                break;
+
             default:
+                if (id & gecko_msg_type_evt) {
+                    id &= ~gecko_msg_type_evt;
+                    printf("unhandled event = %X\n", id);
+                } else if (id & gecko_msg_type_rsp) {
+                    id &= ~gecko_msg_type_rsp;
+                    printf("unhandled response = %X\n", id);
+                } else
+                    printf("undeciphered message = %X\n", id);
                 break;
         }
     }

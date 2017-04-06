@@ -6,8 +6,14 @@
 #include <io.h>
 #include <flash.h>
 #include <em_crypto.h>
+#include <native_gecko.h>
+#include <gatt_db.h>
 
-static uint32 dataAddress, dataCount, digestSize, digestAddress;
+#define PROG_INCREMENT  25
+#define DFU_RESYNC 1
+#define DIGEST_FAILED 2
+
+static uint32 dataAddress, digestSize, digestAddress, baseAddress, dataCount;
 static uint32 ivLen, digestLen;
 static uint8_t iv[IV_LEN];
 static uint8_t digest[DIGEST_LEN];
@@ -19,6 +25,10 @@ static uint8_t dataBuffer[FLASH_PAGE_SIZE];     // holds data for decryption
 static uint32_t bufferBase;                     // address corresponding to base of buffer
 static uint32_t bufferStart;                    // start of encrypted data in buffer
 static uint32_t bufferEnd;                      // length of encrypted data in buffer
+static uint32_t startTime;
+static uint32_t bytesRead;
+static uint8_t progressBuf[5];
+static bool digestFailed;
 
 // get a 16 bit word
 
@@ -31,18 +41,35 @@ static uint32 getWord16(uint8 *ptr) {
 static uint32 getWord32(uint8 *ptr) {
     return *ptr + (ptr[1] << 8) + (ptr[2] << 16) + (ptr[3] << 24);
 }
+
+// put a 32 bit word
+
+static uint32 putWord32(uint8 *ptr, uint32_t val) {
+    ptr[0] = (uint8) val;
+    ptr[1] = (uint8) (val >> 8);
+    ptr[2] = (uint8) (val >> 16);
+    ptr[3] = (uint8) (val >> 24);
+}
+
 static void decode() {
     if (bufferEnd != bufferStart) {
         uint8_t newIv[IV_LEN];
         // save the last block of ciphertext as the new IV
         memcpy(newIv, dataBuffer + bufferEnd - IV_LEN, IV_LEN);
-        uint8_t * bp = dataBuffer+bufferStart;
-        CRYPTO_AES_CBC256(CRYPTO, bp, bp, bufferEnd-bufferStart, deKey, iv, false);
+        uint8_t *bp = dataBuffer + bufferStart;
+        CRYPTO_AES_CBC256(CRYPTO, bp, bp, bufferEnd - bufferStart, deKey, iv, false);
         memcpy(iv, newIv, IV_LEN);
         printf("Flashing block at %X\n", bufferBase);
         FLASH_eraseOneBlock(bufferBase);
         FLASH_writeBlock((void *) bufferBase, FLASH_PAGE_SIZE, dataBuffer);
     }
+}
+
+
+// get time since boot in ms
+static uint32_t getTime() {
+    struct gecko_msg_hardware_get_time_rsp_t *tp = gecko_cmd_hardware_get_time();
+    return tp->seconds * 1000 + tp->ticks / 328;
 }
 
 /**
@@ -51,38 +78,64 @@ static void decode() {
  */
 static void setAddress(uint32_t address) {
     dataAddress = address;
+    //printf("Set address to %X\n", address);
     uint32_t base = address & ~(FLASH_PAGE_SIZE - 1);     // get start of block
     if (bufferBase != base) {
         decode();
         bufferBase = base;
         // prefill the buffer with whatever data is already there, in case we want to write a partial block
         memcpy(dataBuffer, (const void *) bufferBase, FLASH_PAGE_SIZE);
-        bufferStart = address-base;
+        bufferStart = address - base;
         bufferEnd = bufferStart;
     }
 }
 
-void dumphex(const uint8_t * buf, unsigned len) {
-    while(len-- != 0)
+void dumphex(const uint8_t *buf, unsigned len) {
+    while (len-- != 0)
         printf("%02X ", *buf++);
 }
 
 bool checkDigest() {
     CRYPTO_SHA_256(CRYPTO, (const uint8_t *) digestAddress, digestSize, calcDigest);
-    if(memcmp(digest, calcDigest, DIGEST_LEN) != 0) {
+    if (memcmp(digest, calcDigest, DIGEST_LEN) != 0) {
+        digestFailed = true;
 #if defined(DEBUG)
         printf("Digest failed: expected:\n");
         dumphex(digest, DIGEST_LEN);
         printf("\nActually got:\n");
         dumphex(calcDigest, DIGEST_LEN);
 #endif
+        progressBuf[0] = DIGEST_FAILED;
+        gecko_cmd_gatt_server_send_characteristic_notification(currentConnection, GATTDB_ota_progress,
+                                                               1, progressBuf);
         return false;
     }
+    digestFailed = false;
     return true;
 }
+
+// copy a block of data into the buffer. Side effects include writing it to memory.
+
+static void copydata(uint8_t *packet, uint32_t len) {
+    uint32_t offs = dataAddress - bufferBase;
+    memcpy(dataBuffer + offs, packet, len);
+    dataAddress += len;
+    bufferEnd = offs + len;
+    //printf("Length remaining %d\n", count);
+    if (dataAddress == baseAddress + dataCount) {
+        uint32_t duration = getTime() - startTime;
+        printf("Transferred %u bytes in %d.%1d seconds at %d/sec\n", bytesRead, duration / 1000, (duration % 1000) / 10,
+               bytesRead * 1000 / duration);
+        decode();
+        dataCount = 0;
+    } else
+        setAddress(dataAddress);
+}
+
 // process a data packet.
 bool processDataPacket(uint8 *packet, uint8 len) {
-    //printf("Data packet len %d\n", len);
+    if (len != 68)
+        printf("Data packet len %d\n", len);
     if (ivLen != 0) {
         if (len == ivLen) {
             memcpy(iv, packet, len);
@@ -94,11 +147,11 @@ bool processDataPacket(uint8 *packet, uint8 len) {
         return false;
     }
 
-    if(digestLen != 0) {
+    if (digestLen != 0) {
         if (len == digestLen) {
             memcpy(digest, packet, len);
             digestLen = 0;
-            if(checkDigest())
+            if (checkDigest())
                 return true;
             return false;
         }
@@ -107,17 +160,31 @@ bool processDataPacket(uint8 *packet, uint8 len) {
         return false;
     }
 
-    if (dataCount >= len) {
-        uint32_t offs = dataAddress-bufferBase;
-        memcpy(dataBuffer+offs, packet, len);
-        dataAddress += len;
-        bufferEnd = offs+len;
-        dataCount -= len;
-        //printf("Length remaining %d\n", count);
-        if(dataCount == 0)
-            decode();
-        else
-            setAddress(dataAddress);
+    uint32_t baddr = getWord32(packet);
+    if (baddr != dataAddress) {
+        printf("packet address %X != expected %X\n", baddr, dataAddress);
+        if (baddr > dataAddress) {
+            progressBuf[0] = DFU_RESYNC;
+            putWord32(progressBuf + 1, dataAddress);
+            gecko_cmd_gatt_server_send_characteristic_notification(currentConnection, GATTDB_ota_progress,
+                                                                   sizeof(progressBuf), progressBuf);
+            return true;
+        }
+        setAddress(baddr);
+    }
+
+    uint8_t dlen = (uint8_t) (len - 4);
+    bytesRead += dlen;
+    if (dlen + dataAddress <= baseAddress + dataCount) {
+        // does the packet cross a page boundary?
+        uint32_t offs = dataAddress - bufferBase;
+        if (bufferEnd + dlen > FLASH_PAGE_SIZE) {
+            uint32_t tlen = FLASH_PAGE_SIZE - bufferEnd;
+            copydata(packet + 4, tlen);
+            dlen -= tlen;
+            packet += tlen;
+        }
+        copydata(packet + 4, dlen);
         return true;
     }
     return false;
@@ -137,6 +204,10 @@ bool processCtrlPacket(uint8 *packet) {
             bufferEnd = 0;
             bufferStart = 0;
             printf("Restarted DFU\n");
+            int i = gecko_cmd_le_gap_set_conn_parameters(MIN_CONN_INTERVAL, MAX_CONN_INTERVAL, LATENCY,
+                                                         SUPERV_TIMEOUT)->result;
+            if (i != 0)
+                printf("set_conn_parameters failed: error %u\n", i);
             return true;
 
         case DFU_CMD_DATA:
@@ -144,12 +215,15 @@ bool processCtrlPacket(uint8 *packet) {
                 printf("DATA command before previous complete\n");
                 return false;
             }
-            if(address < (uint32) USER_BLAT) {
+            if (address < (uint32) USER_BLAT) {
                 printf("Invalid address - %X should be less than %X", address, USER_BLAT);
                 return false;
             }
             dataCount = len;
+            baseAddress = address;
             setAddress(address);
+            startTime = getTime();
+            bytesRead = 0;
             printf("DATA command: %d bytes at %X\n", len, address);
             return true;
 
@@ -182,9 +256,9 @@ bool processCtrlPacket(uint8 *packet) {
             return true;
 
         case DFU_CMD_DONE:
-            if (digestLen != 0 || ivLen != 0 || dataCount != 0)
+            if (digestFailed || digestLen != 0 || ivLen != 0 || dataCount != 0)
                 return false;
-            if(USER_BLAT->type == APP_BOOT_ADDRESS_TYPE) {
+            if (USER_BLAT->type == APP_BOOT_ADDRESS_TYPE) {
                 printf("Updating BLAT:");
                 MSC->WRITECTRL |= MSC_WRITECTRL_WREN;
                 FLASH_writeWord((uint32_t) &USER_BLAT->type, APP_APP_ADDRESS_TYPE);
@@ -195,8 +269,10 @@ bool processCtrlPacket(uint8 *packet) {
 
         case DFU_CMD_PING:
             // checking if we are up to the same point as the master thinks we should be
-            printf("Pinged at %d/%d\n", len, dataCount);
-            return len == dataCount;
+            printf("Pinged at %d/%d\n", len, dataAddress - baseAddress);
+            uint32_t t = getTime() - startTime;
+            printf("time: %d.%02d, rate %d/sec\n", t / 1000, (t % 1000) / 10, (bytesRead * 1000) / t);
+            return true;
 
         default:
             break;

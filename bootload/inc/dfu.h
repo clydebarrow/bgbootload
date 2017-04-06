@@ -32,6 +32,13 @@
 #define KEY_LEN             (256/8) // length of key
 #define DIGEST_LEN          (256/8) // length of SHA256 digest
 
+
+#define MIN_CONN_INTERVAL    9   // 7.5ms
+#define MAX_CONN_INTERVAL    9  // 7.5ms
+#define LATENCY             40  // max number of connection attempts we can skip. This is set high
+#define SUPERV_TIMEOUT      300 // 30s
+#define MAX_MTU             72  // max mtu
+
 extern blat_t __UserStart;
 #define USER_BLAT    (&__UserStart)
 extern bool processCtrlPacket(uint8 * packet);      // process a control packet. Return true if accepted
@@ -40,6 +47,7 @@ extern bool enterDfu;
 extern bool doReset;
 extern const unsigned char ota_key[KEY_LEN];
 extern unsigned char deKey[KEY_LEN];
+extern uint8 currentConnection;
 
 #define DFU_ENTRY_VECTOR    7       // index into vector table for EnterDFU_Handler
 

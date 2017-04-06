@@ -4,3 +4,4 @@ hwrev 18
 fwrev 20
 ota_control 23
 ota_data 26
+ota_progress 29

@@ -51,7 +51,7 @@
         </characteristic>
     </service>
 
-    <service uuid=OTA_SERVICE_UUID>
+    <service uuid="${OTA_SERVICE_UUID}">
         <description>EFR32BG OTA</description>
         <characteristic uuid="95301001-963F-46B1-B801-0B23E8904835" id="ota_control">
             <properties write="true"/>
@@ -60,8 +60,13 @@
         </characteristic>
         <characteristic uuid="95301002-963F-46B1-B801-0B23E8904835" id="ota_data">
             <properties write="true" write_no_response="true"/>
-            <value type="user" length="32"/>
+            <value type="user" length="64"/>
             <description>OTA DATA</description>
+        </characteristic>
+        <characteristic uuid="95301003-963F-46B1-B801-0B23E8904835" id="ota_progress">
+            <properties notify="true" />
+            <value type="user" length="16"/>
+            <description>OTA Progress</description>
         </characteristic>
     </service>
 

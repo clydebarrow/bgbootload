@@ -15,5 +15,6 @@ extern const struct bg_gattdb_def bg_gattdb_data;
 #define GATTDB_fwrev                           20
 #define GATTDB_ota_control                     23
 #define GATTDB_ota_data                        26
+#define GATTDB_ota_progress                    29
 
 #endif
