@@ -9,9 +9,9 @@ add_definitions(-D__FPU_PRESENT)
 include_directories(inc)
 include_directories(gatt)
 include_directories(libs/SEGGER_RTT_V612j/RTT)
-include_directories(platform/emlib/inc)
-include_directories(platform/Device/SiliconLabs/EFR32BG1B/Include)
-include_directories(platform/CMSIS/Include)
+include_directories(EFR32BG1B)
+include_directories(em_inc)
+include_directories(core)
 
 # find the bgbuild command used to translate xml into C
 find_program(BGBUILD_CMD bin/bgbuild
