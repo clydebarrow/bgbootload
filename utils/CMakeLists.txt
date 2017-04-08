@@ -8,8 +8,7 @@ set(SOURCE_FILES
         vector.c
         vector.h)
 
-find_package(PkgConfig REQUIRED)
-pkg_search_module(OPENSSL REQUIRED openssl)
+find_package(OPENSSL REQUIRED openssl)
 
 if( OPENSSL_FOUND )
     include_directories(${OPENSSL_INCLUDE_DIRS})

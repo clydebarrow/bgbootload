@@ -22,6 +22,7 @@
 
     </service>
 
+
     <!-- Device Information Service -->
     <service uuid="180A">
         <!-- Manufacturer name string -->
@@ -32,22 +33,22 @@
         <!-- Model number string -->
         <characteristic uuid="2A24">
             <properties read="true" const="true"/>
-            <value>1</value>
+            <value>model</value>
         </characteristic>
         <!-- Serial number string -->
-        <characteristic uuid="2A23" id="serialnum">
-            <properties read="true"/>
-            <value length="16" const="true" variable_length="true">sernum</value>
+        <characteristic uuid="2A25" id="serialnum">
+            <properties read="true" const="true"/>
+            <value>sernum</value>
         </characteristic>
         <!-- Hardware revision -->
         <characteristic uuid="2A27" id="hwrev">
             <properties read="true" const="true"/>
-            <value>1</value>
+            <value>3</value>
         </characteristic>
         <!-- Firmware revision -->
-        <characteristic uuid="2A27" id="fwrev">
+        <characteristic uuid="2A26" id="fwrev">
             <properties read="true" const="true"/>
-            <value>1.0</value>
+            <value>${PROJECT_VERSION}</value>
         </characteristic>
     </service>
 

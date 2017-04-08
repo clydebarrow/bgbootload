@@ -31,7 +31,6 @@ void OnProjectLoad (void) {
 *                                                                     
 **********************************************************************
 */                                                                    
-/*
 void TargetReset (void) {                                             
                                                                       
   unsigned int SP;                                                    
@@ -40,7 +39,7 @@ void TargetReset (void) {
                                                                       
   Exec.Reset();                                                       
                                                                       
-  VectorTableAddr = Elf.GetBaseAddr();                                
+  VectorTableAddr = 0;
                                                                       
   if (VectorTableAddr != 0xFFFFFFFF) {                                
                                                                       
@@ -53,7 +52,6 @@ void TargetReset (void) {
     Target.SetReg("PC", PC);                                        
   }                                                                   
 }                                                                     
-*/
 
 /*********************************************************************
 *                                                                     
