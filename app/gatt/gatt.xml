@@ -58,7 +58,7 @@
             <value length="8" type="const">Value...</value>
             <description>User char</description>
         </characteristic>
-        <characteristic uuid="773c1007-d065-45bd-890b-d960e85e0247" id="ota_trigger">
+        <characteristic uuid="1F87F0EE-80E8-4119-81A4-0496B8BE64A3" id="ota_trigger">
             <properties type="user" write="true" write_no_response="true"/>
             <value type="user" length="4"/>
             <description>DFU Trigger</description>
